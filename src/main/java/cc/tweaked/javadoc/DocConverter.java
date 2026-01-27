@@ -89,19 +89,25 @@ public class DocConverter extends SimpleDocTreeVisitor<Void, StringBuilder> {
     private void emitText(String body, StringBuilder builder, boolean stripFirst) {
         if (body.indexOf('\n') < 0) {
             builder.append(body);
-        } else {
-            String[] lines = body.split("\n");
-            for (int i = 0; i < lines.length; i++) {
-                String line = lines[i];
-                if ((i > 0 || stripFirst) && line.startsWith(" ")) line = line.substring(1);
+            return;
+        }
 
-                if (i > 0) {
-                    builder.append("\n");
-                    if (!line.isEmpty()) builder.append(indent);
-                }
+        var idx = 0;
+        while (idx <= body.length()) {
+            var end = body.indexOf('\n', idx);
+            if (end < 0) end = body.length();
 
-                builder.append(line);
+            var line = body.substring(idx, end);
+            if (stripFirst && line.startsWith(" ")) line = line.substring(1);
+
+            if (idx > 0) {
+                builder.append("\n");
+                if (!line.isEmpty()) builder.append(indent);
             }
+
+            builder.append(line);
+
+            idx = end + 1;
         }
     }
 
@@ -261,23 +267,8 @@ public class DocConverter extends SimpleDocTreeVisitor<Void, StringBuilder> {
     @Override
     public Void visitStartElement(StartElementTree node, StringBuilder stringBuilder) {
         if (node.getName().contentEquals("pre")) {
+            visitCodeBlockHeader(node.getAttributes(), "lua", stringBuilder);
             inPre = true;
-            stringBuilder.append("```lua");
-            if (!node.getAttributes().isEmpty()) {
-                stringBuilder.append(" {");
-                boolean first = true;
-                for (var attribute : node.getAttributes()) {
-                    if (first) {
-                        first = false;
-                    } else {
-                        stringBuilder.append(' ');
-                    }
-                    var attr = (AttributeTree) attribute;
-                    stringBuilder.append(attr.getName()).append('=').append(attr.getValue());
-                }
-                stringBuilder.append('}');
-            }
-            stringBuilder.append('\n');
         } else if (node.getName().contentEquals("p")) {
             // No-op
         } else if (node.getName().contentEquals("ul")) {
@@ -296,6 +287,54 @@ public class DocConverter extends SimpleDocTreeVisitor<Void, StringBuilder> {
             stringBuilder.append(node.isSelfClosing() ? " />" : ">");
         }
         return null;
+    }
+
+    @Override
+    public Void visitSnippet(SnippetTree node, StringBuilder stringBuilder) {
+        visitCodeBlockHeader(node.getAttributes(), "", stringBuilder);
+        stringBuilder.append(node.getBody().getBody());
+        if (!node.getBody().getBody().endsWith("\n")) stringBuilder.append('\n');
+        stringBuilder.append("```");
+        return null;
+    }
+
+    private void visitCodeBlockHeader(List<? extends DocTree> attributes, String defaultLanguage, StringBuilder stringBuilder) {
+        stringBuilder.append("```");
+
+        // Append our language (if present), and check if we have any other attributes.
+        var hasLanguage = false;
+        var hasAttributes = false;
+        for (var attribute : attributes) {
+            var attr = (AttributeTree) attribute;
+            if (attr.getName().contentEquals("lang")) {
+                hasLanguage = true;
+                for (var v : attr.getValue()) stringBuilder.append(v);
+            } else {
+                hasAttributes = true;
+            }
+        }
+
+        if (!hasLanguage) stringBuilder.append(defaultLanguage);
+
+        if (hasAttributes) {
+            stringBuilder.append(" {");
+            boolean first = true;
+            for (var attribute : attributes) {
+                var attr = (AttributeTree) attribute;
+                if (attr.getName().contentEquals("lang")) continue;
+
+                if (first) {
+                    first = false;
+                } else {
+                    stringBuilder.append(' ');
+                }
+
+                stringBuilder.append(attr.getName()).append('=');
+                for (var v : attr.getValue()) stringBuilder.append(v);
+            }
+            stringBuilder.append('}');
+        }
+        stringBuilder.append('\n');
     }
 
     @Override
@@ -382,6 +421,17 @@ public class DocConverter extends SimpleDocTreeVisitor<Void, StringBuilder> {
         }
     }
 
+    @Override
+    public Void visitRawText(RawTextTree node, StringBuilder stringBuilder) {
+        return node.getKind() == DocTree.Kind.MARKDOWN
+            ? visitMarkdown(node, stringBuilder)
+            : super.visitRawText(node, stringBuilder);
+    }
+
+    private Void visitMarkdown(RawTextTree node, StringBuilder stringBuilder) {
+        stringBuilder.append(node.getContent());
+        return null;
+    }
 
     @Override
     protected Void defaultAction(DocTree node, StringBuilder stringBuilder) {

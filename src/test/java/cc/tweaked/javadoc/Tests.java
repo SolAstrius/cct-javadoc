@@ -19,6 +19,7 @@ public class Tests {
     @ParameterizedTest
     @ValueSource(strings = {
         "basic",
+        "basic_md",
         "generic_peripheral",
         "types.One",
         "types.Two",

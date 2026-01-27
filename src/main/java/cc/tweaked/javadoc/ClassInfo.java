@@ -6,10 +6,7 @@
 
 package cc.tweaked.javadoc;
 
-import com.sun.source.doctree.DocCommentTree;
-import com.sun.source.doctree.DocTree;
-import com.sun.source.doctree.TextTree;
-import com.sun.source.doctree.UnknownBlockTagTree;
+import com.sun.source.doctree.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -113,7 +110,12 @@ public class ClassInfo {
         if (tree == null) return null;
         StringBuilder builder = new StringBuilder();
         for (DocTree child : tree) {
-            if (child.getKind() == DocTree.Kind.TEXT) builder.append(((TextTree) child).getBody());
+            switch (child.getKind()) {
+                case TEXT -> builder.append(((TextTree) child).getBody());
+                case MARKDOWN -> builder.append(((RawTextTree) child).getContent());
+                default -> {
+                }
+            }
         }
         return builder.toString();
     }

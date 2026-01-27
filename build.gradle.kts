@@ -4,21 +4,20 @@ plugins {
 }
 
 group = "cc.tweaked"
-version = "1.8.5"
+version = "1.9.0"
 
 java {
     withJavadocJar()
     withSourcesJar()
 
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
-    }
+    toolchain { languageVersion = JavaLanguageVersion.of(25) }
 }
 
 repositories {
     mavenCentral()
-    maven("https://maven.squiddev.cc") {
-        content {
+    exclusiveContent {
+        forRepositories(maven("https://maven.squiddev.cc"))
+        filter {
             includeGroup("cc.tweaked")
         }
     }
@@ -28,10 +27,11 @@ dependencies {
     compileOnly("com.google.code.findbugs:jsr305:3.0.2")
     implementation("com.google.auto.service:auto-service:1.0.1")
 
-    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.0")
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.9.0")
-    testImplementation("cc.tweaked:cc-tweaked-1.20.1-core:1.113.1")
-    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.0")
+    testImplementation("cc.tweaked:cc-tweaked-1.20.1-core-api:1.113.1")
+
+    testImplementation(platform("org.junit:junit-bom:6.0.2"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.test {
