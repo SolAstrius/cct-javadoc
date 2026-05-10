@@ -21,6 +21,7 @@ public class Tests {
         "basic",
         "basic_md",
         "generic_peripheral",
+        "mainthread",
         "types.One",
         "types.Two",
         "types.Adder",

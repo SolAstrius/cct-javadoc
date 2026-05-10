@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "cc.tweaked"
-version = "1.9.0"
+version = "1.10.0-mainthread.1"
 
 java {
     withJavadocJar()
@@ -49,6 +49,17 @@ publishing {
         maven("https://maven.squiddev.cc") {
             name = "SquidDev"
             credentials(PasswordCredentials::class)
+        }
+        maven("https://maven.pkg.github.com/SolAstrius/cct-javadoc") {
+            name = "GitHubPackages"
+            credentials {
+                username = providers.gradleProperty("gpr.user")
+                    .orElse(providers.environmentVariable("GITHUB_ACTOR"))
+                    .orNull
+                password = providers.gradleProperty("gpr.token")
+                    .orElse(providers.environmentVariable("GITHUB_TOKEN"))
+                    .orNull
+            }
         }
     }
 }

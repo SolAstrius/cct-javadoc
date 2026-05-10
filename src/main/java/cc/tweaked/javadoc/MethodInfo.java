@@ -26,11 +26,13 @@ public class MethodInfo {
     private final List<String> allNames;
     private final ExecutableElement method;
     private final DocCommentTree doc;
+    private final boolean mainThread;
 
-    public MethodInfo(@Nonnull List<String> allNames, @Nonnull ExecutableElement method, @Nullable DocCommentTree doc) {
+    public MethodInfo(@Nonnull List<String> allNames, @Nonnull ExecutableElement method, @Nullable DocCommentTree doc, boolean mainThread) {
         this.allNames = Collections.unmodifiableList(allNames);
         this.method = method;
         this.doc = doc;
+        this.mainThread = mainThread;
     }
 
     /**
@@ -48,12 +50,25 @@ public class MethodInfo {
         @SuppressWarnings({"unchecked", "rawtypes"})
         List<AnnotationValue> overrideNames = (List) Helpers.getAnnotationValue(mirror, "value");
 
+        Object mainThreadValue = Helpers.getAnnotationValue(mirror, "mainThread");
+        boolean mainThread = mainThreadValue instanceof Boolean b && b;
+
         return Optional.of(new MethodInfo(
             overrideNames == null
                 ? List.of(method.getSimpleName().toString())
                 : overrideNames.stream().map(x -> (String) x.getValue()).collect(Collectors.toList()),
-            method, env.trees().getDocCommentTree(method)
+            method, env.trees().getDocCommentTree(method), mainThread
         ));
+    }
+
+    /**
+     * Whether this method is annotated with {@code @LuaFunction(mainThread = true)}, meaning it is dispatched on the
+     * server thread and yields the calling Lua coroutine until the next tick.
+     *
+     * @return {@code true} if the method runs on the main thread.
+     */
+    public boolean mainThread() {
+        return mainThread;
     }
 
     @Nonnull

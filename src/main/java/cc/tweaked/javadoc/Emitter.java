@@ -150,6 +150,12 @@ public class Emitter {
         StringBuilder builder = new StringBuilder();
         builder.append("--[[- ");
         doc.visit(info.doc(), builder);
+        if (info.mainThread()) {
+            builder.append("\n\n<aside class=\"cct-yields\" role=\"note\">")
+                .append("<span class=\"cct-yields-label\">Yields</span>")
+                .append("Yields until the next server tick.")
+                .append("</aside>");
+        }
         builder.append("\n");
         writeSource(builder, method);
 
