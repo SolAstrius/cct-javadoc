@@ -339,7 +339,12 @@ public class Emitter {
         private MethodCollection(ClassInfo info, Element enclosing, List<EmittedMethod> methods) {
             this.info = info;
             this.enclosing = enclosing;
-            this.type = enclosing.asType();
+            // Erase the enclosing type. If the enclosing class is generic
+            // (e.g. AbstractBase<T>), its declared type carries free type
+            // variables; isSubtype against a concrete subclass would then
+            // return false and the parent's @LuaFunctions would never be
+            // attributed to any module that extends it.
+            this.type = env.types().erasure(enclosing.asType());
             this.methods = methods;
 
             int depth = 0;
@@ -354,7 +359,8 @@ public class Emitter {
         }
 
         boolean appearsIn(@Nonnull ClassInfo klass) {
-            return info == klass || env.types().isAssignable(klass.element().asType(), type);
+            return info == klass
+                || env.types().isSubtype(env.types().erasure(klass.element().asType()), type);
         }
 
         void emit(String prefix, StringBuilder builder) {

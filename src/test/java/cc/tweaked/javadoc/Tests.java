@@ -20,6 +20,7 @@ public class Tests {
     @ValueSource(strings = {
         "basic",
         "basic_md",
+        "generic_base",
         "generic_peripheral",
         "mainthread",
         "types.One",
