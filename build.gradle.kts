@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "cc.tweaked"
-version = "1.10.0-mainthread.3"
+version = "1.10.0-mainthread.4"
 
 java {
     withJavadocJar()

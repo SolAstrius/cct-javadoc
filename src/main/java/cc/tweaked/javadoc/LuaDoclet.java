@@ -61,7 +61,7 @@ public class LuaDoclet implements Doclet {
         if (env == null) return false;
 
         Map<ExecutableElement, MethodInfo> methods = docEnv.getSpecifiedElements().stream()
-            .filter(x -> x.getKind() == ElementKind.CLASS).map(TypeElement.class::cast)
+            .filter(x -> x.getKind() == ElementKind.CLASS || x.getKind() == ElementKind.INTERFACE).map(TypeElement.class::cast)
             .flatMap(x -> x.getEnclosedElements().stream())
 
             // Only allow instance methods. Static methods are "generic peripheral" ones, and so are unsuitable.
@@ -72,7 +72,7 @@ public class LuaDoclet implements Doclet {
             }, LinkedHashMap::new));
 
         Map<TypeElement, ClassInfo> types = docEnv.getSpecifiedElements().stream()
-            .filter(x -> x.getKind() == ElementKind.CLASS).map(TypeElement.class::cast)
+            .filter(x -> x.getKind() == ElementKind.CLASS || x.getKind() == ElementKind.INTERFACE).map(TypeElement.class::cast)
             .distinct()
             .flatMap(x -> ClassInfo.of(env, x).stream())
             .collect(Collectors.toMap(ClassInfo::element, Function.identity()));
