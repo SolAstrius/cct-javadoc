@@ -266,6 +266,12 @@ public class Emitter {
 
             case METHOD: {
                 MethodInfo method = methods.get(MoreElements.asExecutable(element));
+                // No MethodInfo means the referenced method isn't in this
+                // compilation unit — typically a @LuaFunction inherited from
+                // a compiled-only upstream peripheral. Render the bare name
+                // so the doc reads naturally; we can't link, but a plain text
+                // fallback beats an error.
+                if (method == null) return element.getSimpleName().toString();
 
                 // If this is an unqualified reference, then emit an unqualified reference.
                 if (!qualified) return method.name();
