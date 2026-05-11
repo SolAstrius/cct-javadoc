@@ -12,8 +12,12 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Information about a class.
@@ -33,8 +37,9 @@ public class ClassInfo {
     private final String typeName;
     private final String referenceName;
     private final boolean attaches;
+    @Nullable private final Set<String> attachTargets;
 
-    private ClassInfo(@Nonnull String module, @Nonnull String kind, @Nonnull Sort sort, @Nonnull TypeElement element, @Nonnull DocCommentTree doc, boolean hidden, boolean attaches) {
+    private ClassInfo(@Nonnull String module, @Nonnull String kind, @Nonnull Sort sort, @Nonnull TypeElement element, @Nonnull DocCommentTree doc, boolean hidden, boolean attaches, @Nullable Set<String> attachTargets) {
         this.name = module;
         this.kind = kind;
         this.sort = sort;
@@ -42,6 +47,7 @@ public class ClassInfo {
         this.doc = doc;
         this.hidden = hidden;
         this.attaches = attaches;
+        this.attachTargets = attachTargets;
 
         if (sort != Sort.TYPE) {
             moduleName = name;
@@ -74,9 +80,19 @@ public class ClassInfo {
             .findAny().map(ClassInfo::getName).orElse(null);
 
         boolean hidden = doc.getBlockTags().stream().anyMatch(x -> x.getKind() == DocTree.Kind.HIDDEN);
-        boolean attaches = doc.getBlockTags().stream()
+        Optional<UnknownBlockTagTree> attachTag = doc.getBlockTags().stream()
             .filter(UnknownBlockTagTree.class::isInstance).map(UnknownBlockTagTree.class::cast)
-            .anyMatch(x -> x.getTagName().equals("cc.attach"));
+            .filter(x -> x.getTagName().equals("cc.attach"))
+            .findFirst();
+        boolean attaches = attachTag.isPresent();
+        Set<String> attachTargets = null;
+        if (attaches) {
+            String content = getName(attachTag.get().getContent()).trim();
+            if (!content.isEmpty()) {
+                attachTargets = Collections.unmodifiableSet(
+                    new LinkedHashSet<>(Arrays.asList(content.split("\\s+"))));
+            }
+        }
 
         if (name == null || name.isEmpty()) return Optional.empty();
 
@@ -108,7 +124,7 @@ public class ClassInfo {
             }
         }
 
-        return Optional.of(new ClassInfo(name, kind, sort, type, doc, hidden, attaches));
+        return Optional.of(new ClassInfo(name, kind, sort, type, doc, hidden, attaches, attachTargets));
     }
 
     private static String getName(List<? extends DocTree> tree) {
@@ -175,12 +191,21 @@ public class ClassInfo {
     }
 
     /**
-     * Whether this generic-source class opts into auto-attachment: methods are
-     * copied into every peripheral page whose wrapped block-entity type is
-     * assignable to the source's receiver. Signaled by a {@code @cc.attach}
-     * block tag on the class doc.
+     * Whether this generic-source class opts into auto-attachment via a
+     * {@code @cc.attach} block tag. When {@link #attachTargets()} is non-null
+     * the tag listed explicit module names; otherwise attachment is inferred
+     * from the source's receiver type.
      */
     public boolean attaches() {
         return attaches;
+    }
+
+    /**
+     * Explicit list of target module names from {@code @cc.attach}, or
+     * {@code null} when the tag carried no value (use receiver-type inference).
+     */
+    @Nullable
+    public Set<String> attachTargets() {
+        return attachTargets;
     }
 }

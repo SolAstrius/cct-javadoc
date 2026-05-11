@@ -383,12 +383,16 @@ public class Emitter {
         boolean appearsIn(@Nonnull ClassInfo klass) {
             if (info == klass) return true;
             if (env.types().isSubtype(env.types().erasure(klass.element().asType()), type)) return true;
-            // GenericSource attachment: scan klass's type hierarchy for any
-            // type argument that's assignable to the source's receiver. Catches
-            // peripherals declared as Wrapper<MyBlockEntity> when the receiver
-            // is a supertype of MyBlockEntity, without needing the peripheral
-            // itself to extend the source.
-            if (receiverType != null) return wrapsCompatibleReceiver(klass.element());
+            // GenericSource attachment.
+            if (info != null && info.element() == enclosing && info.attaches()) {
+                // Explicit list of target module names from @cc.attach.
+                if (info.attachTargets() != null) return info.attachTargets().contains(klass.moduleName());
+                // Otherwise: scan klass's type hierarchy for any type argument
+                // assignable to the source's receiver. Catches peripherals
+                // declared as Wrapper<MyBlockEntity> when the receiver is a
+                // supertype of MyBlockEntity.
+                if (receiverType != null) return wrapsCompatibleReceiver(klass.element());
+            }
             return false;
         }
 
