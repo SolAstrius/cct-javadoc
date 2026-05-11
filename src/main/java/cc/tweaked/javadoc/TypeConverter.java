@@ -54,8 +54,11 @@ public class TypeConverter extends SimpleTypeVisitor8<StringBuilder, StringBuild
     public StringBuilder visitPrimitive(PrimitiveType t, StringBuilder stringBuilder) {
         switch (t.getKind()) {
             case DOUBLE:
+            case FLOAT:
             case INT:
             case LONG:
+            case SHORT:
+            case BYTE:
                 return stringBuilder.append("number");
             case BOOLEAN:
                 return stringBuilder.append("boolean");
@@ -78,7 +81,8 @@ public class TypeConverter extends SimpleTypeVisitor8<StringBuilder, StringBuild
         TypeElement type = MoreElements.asType(t.asElement());
         if (is(type, String.class) || is(type, ByteBuffer.class) || is(type.getSuperclass(), Enum.class)) {
             return stringBuilder.append("string");
-        } else if (is(type, Integer.class) || is(type, Double.class) || is(type, Long.class)) {
+        } else if (is(type, Integer.class) || is(type, Double.class) || is(type, Long.class)
+            || is(type, Float.class) || is(type, Short.class) || is(type, Byte.class)) {
             return stringBuilder.append("number");
         } else if (is(type, Boolean.class)) {
             return stringBuilder.append("boolean");
