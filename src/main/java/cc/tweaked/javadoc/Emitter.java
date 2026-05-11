@@ -333,6 +333,7 @@ public class Emitter {
         private final ClassInfo info;
         private final Element enclosing;
         private final TypeMirror type;
+        private final TypeMirror receiverType;
         private final int depth;
         private final List<EmittedMethod> methods;
 
@@ -347,6 +348,21 @@ public class Emitter {
             this.type = env.types().erasure(enclosing.asType());
             this.methods = methods;
 
+            // For GenericSource enclosings that opt into auto-attachment via
+            // a @cc.attach class tag, derive the receiver type from the first
+            // parameter of any method in the collection. Methods then attach
+            // to peripherals whose wrapped block-entity type is assignable to
+            // this receiver.
+            TypeMirror receiver = null;
+            if (info != null && info.element() == enclosing && info.attaches()
+                && env.getGenericPeripheralType() != null
+                && env.types().isAssignable(env.types().erasure(enclosing.asType()), env.types().erasure(env.getGenericPeripheralType()))
+                && !methods.isEmpty()) {
+                var params = methods.get(0).method.element().getParameters();
+                if (!params.isEmpty()) receiver = env.types().erasure(params.get(0).asType());
+            }
+            this.receiverType = receiver;
+
             int depth = 0;
             Element self = enclosing;
             while (true) {
@@ -359,8 +375,34 @@ public class Emitter {
         }
 
         boolean appearsIn(@Nonnull ClassInfo klass) {
-            return info == klass
-                || env.types().isSubtype(env.types().erasure(klass.element().asType()), type);
+            if (info == klass) return true;
+            if (env.types().isSubtype(env.types().erasure(klass.element().asType()), type)) return true;
+            // GenericSource attachment: scan klass's type hierarchy for any
+            // type argument that's assignable to the source's receiver. Catches
+            // peripherals declared as Wrapper<MyBlockEntity> when the receiver
+            // is a supertype of MyBlockEntity, without needing the peripheral
+            // itself to extend the source.
+            if (receiverType != null) return wrapsCompatibleReceiver(klass.element());
+            return false;
+        }
+
+        private boolean wrapsCompatibleReceiver(@Nonnull TypeElement target) {
+            Set<TypeMirror> visited = new HashSet<>();
+            Deque<TypeMirror> queue = new ArrayDeque<>();
+            queue.push(target.asType());
+            while (!queue.isEmpty()) {
+                TypeMirror current = queue.pop();
+                if (!visited.add(current)) continue;
+                if (current instanceof DeclaredType dt) {
+                    for (TypeMirror arg : dt.getTypeArguments()) {
+                        if (arg == null || arg.getKind() == TypeKind.NONE) continue;
+                        TypeMirror erased = env.types().erasure(arg);
+                        if (env.types().isAssignable(erased, receiverType)) return true;
+                    }
+                }
+                for (TypeMirror sup : env.types().directSupertypes(current)) queue.push(sup);
+            }
+            return false;
         }
 
         void emit(String prefix, StringBuilder builder) {

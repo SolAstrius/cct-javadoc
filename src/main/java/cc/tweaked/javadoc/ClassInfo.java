@@ -32,14 +32,16 @@ public class ClassInfo {
     private final String moduleName;
     private final String typeName;
     private final String referenceName;
+    private final boolean attaches;
 
-    private ClassInfo(@Nonnull String module, @Nonnull String kind, @Nonnull Sort sort, @Nonnull TypeElement element, @Nonnull DocCommentTree doc, boolean hidden) {
+    private ClassInfo(@Nonnull String module, @Nonnull String kind, @Nonnull Sort sort, @Nonnull TypeElement element, @Nonnull DocCommentTree doc, boolean hidden, boolean attaches) {
         this.name = module;
         this.kind = kind;
         this.sort = sort;
         this.element = element;
         this.doc = doc;
         this.hidden = hidden;
+        this.attaches = attaches;
 
         if (sort != Sort.TYPE) {
             moduleName = name;
@@ -72,6 +74,9 @@ public class ClassInfo {
             .findAny().map(ClassInfo::getName).orElse(null);
 
         boolean hidden = doc.getBlockTags().stream().anyMatch(x -> x.getKind() == DocTree.Kind.HIDDEN);
+        boolean attaches = doc.getBlockTags().stream()
+            .filter(UnknownBlockTagTree.class::isInstance).map(UnknownBlockTagTree.class::cast)
+            .anyMatch(x -> x.getTagName().equals("cc.attach"));
 
         if (name == null || name.isEmpty()) return Optional.empty();
 
@@ -103,7 +108,7 @@ public class ClassInfo {
             }
         }
 
-        return Optional.of(new ClassInfo(name, kind, sort, type, doc, hidden));
+        return Optional.of(new ClassInfo(name, kind, sort, type, doc, hidden, attaches));
     }
 
     private static String getName(List<? extends DocTree> tree) {
@@ -167,5 +172,15 @@ public class ClassInfo {
 
     public boolean isHidden() {
         return hidden;
+    }
+
+    /**
+     * Whether this generic-source class opts into auto-attachment: methods are
+     * copied into every peripheral page whose wrapped block-entity type is
+     * assignable to the source's receiver. Signaled by a {@code @cc.attach}
+     * block tag on the class doc.
+     */
+    public boolean attaches() {
+        return attaches;
     }
 }
